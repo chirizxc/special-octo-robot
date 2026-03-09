@@ -1,0 +1,31 @@
+name: "release-upload-smoke"
+
+on:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+
+jobs:
+  upload:
+    name: "Upload dummy wasm wheel"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Create dummy wasm wheel"
+        shell: bash
+        run: |
+          mkdir -p wasm
+          touch "wasm/smoke-${GITHUB_REF_NAME}-py3-none-any.whl"
+      - name: "Upload wasm wheels to GitHub Release"
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        shell: bash
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          gh release view "$tag" >/dev/null 2>&1 || \
+          gh release create "$tag" --title "$tag" --notes ""
+          gh release upload "$tag" wasm/*.whl --clobber
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
