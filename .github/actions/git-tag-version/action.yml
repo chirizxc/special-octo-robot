@@ -1,0 +1,27 @@
+name: "git tag version"
+description: "Set Cargo.toml version from git tag"
+
+inputs:
+  path:
+    description: "Path to Cargo.toml"
+    required: false
+    default: "Cargo.toml"
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Set Cargo.toml version"
+      if: ${{ startsWith(github.ref, 'refs/tags/') }}
+      shell: bash
+      env:
+        RELEASE_VERSION: ${{ github.ref_name }}
+        CARGO_TOML_PATH: ${{ inputs.path }}
+      run: |
+        VERSION="${RELEASE_VERSION}"
+        TARGET_PATH="${CARGO_TOML_PATH}"
+
+        sed \
+          --in-place \
+          --regexp-extended \
+          "0,/^version = \"[^\"]+\"/s//version = \"${VERSION}\"/" \
+          "${TARGET_PATH}"

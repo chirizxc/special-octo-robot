@@ -1,0 +1,32 @@
+name: "git-tag-version-demo"
+
+on:
+  push:
+    tags:
+      - "demo-*"
+  workflow_dispatch:
+
+jobs:
+  demo:
+    name: "Demo git-tag-version"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Before"
+        shell: bash
+        run: |
+          cat demo/git-tag-version/Cargo.toml
+      - uses: ./.github/actions/git-tag-version
+        with:
+          path: demo/git-tag-version/Cargo.toml
+      - name: "After"
+        shell: bash
+        run: |
+          cat demo/git-tag-version/Cargo.toml
+          grep -Fx "version = \"${GITHUB_REF_NAME}\"" demo/git-tag-version/Cargo.toml
+          cp demo/git-tag-version/Cargo.toml demo-output.txt
+      - name: "Upload output"
+        uses: actions/upload-artifact@v4
+        with:
+          name: git-tag-version-demo-output
+          path: demo-output.txt
