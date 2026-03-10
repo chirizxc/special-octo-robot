@@ -1,0 +1,11 @@
+[package]
+name = "toml-rs-mini"
+version = "0.3.6"
+edition = "2024"
+
+[lib]
+name = "_toml_rs_mini"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.28.2", features = ["extension-module"] }

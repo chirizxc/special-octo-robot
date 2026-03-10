@@ -1,0 +1,51 @@
+name: "temp-mini-release"
+
+on:
+  push:
+    tags:
+      - "*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: "Build and release temp/toml-rs-mini"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+      - uses: ./.github/actions/git-tag-version
+        with:
+          path: temp/toml-rs-mini/Cargo.toml
+      - name: "Build wheel and sdist"
+        shell: bash
+        run: |
+          uv pip install --system maturin==1.9.6
+          cd temp/toml-rs-mini
+          maturin build --release --out dist
+          maturin sdist --out dist
+      - name: "Check built package"
+        shell: bash
+        run: |
+          cd temp/toml-rs-mini
+          pip install dist/*.whl
+          python -c "import toml_rs_mini; print(toml_rs_mini.add(2, 3)); print(toml_rs_mini.__version__)"
+      - name: "Upload artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          name: temp-toml-rs-mini-dist
+          path: temp/toml-rs-mini/dist
+      - name: "Upload release assets"
+        shell: bash
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          gh release view "$tag" >/dev/null 2>&1 || \
+          gh release create "$tag" --title "$tag" --notes ""
+          gh release upload "$tag" temp/toml-rs-mini/dist/* --clobber
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}

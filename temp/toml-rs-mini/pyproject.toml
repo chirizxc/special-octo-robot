@@ -1,0 +1,13 @@
+[build-system]
+requires = ["maturin==1.9.6"]
+build-backend = "maturin"
+
+[tool.maturin]
+python-source = "py-src"
+module-name = "toml_rs_mini._toml_rs_mini"
+
+[project]
+name = "toml-rs-mini"
+dynamic = ["version"]
+requires-python = ">=3.10"
+description = "Minimal PyO3 package for git tag version release testing"
