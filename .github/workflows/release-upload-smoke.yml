@@ -36,6 +36,7 @@ jobs:
           print(platform.machine())
           print(platform.processor())
           pprint(cpuinfo.get_cpu_info())
+          print(cpuinfo.get_cpu_info()["brand_raw"])
           PY
 
           uv venv .venv --python 3.14
