@@ -38,6 +38,8 @@ jobs:
           pprint(cpuinfo.get_cpu_info())
           PY
 
+          uv venv .venv --python 3.14
+          source .venv/bin/activate
           uv pip install py-cpuinfo2 --system
 
           python test.py
