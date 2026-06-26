@@ -40,6 +40,6 @@ jobs:
 
           uv venv .venv --python 3.14
           source .venv/bin/activate
-          uv pip install py-cpuinfo2 --system
+          uv pip install py-cpuinfo2
 
           python test.py
