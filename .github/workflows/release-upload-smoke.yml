@@ -1,6 +1,313 @@
 name: pyo3-msys2-matrix
 
 on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  branch:
+    name: branch / ${{ matrix.sys }}
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {
+            sys: MINGW64,
+            repo: chirizxc/pyo3,
+            ref: 9d5cc3ff90e477877fae0cfad4c05a379608bfcf,
+            env_name: x86_64,
+            target: x86_64-pc-windows-gnu,
+            linker: gcc,
+            linker_env: CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER,
+            compiler: gcc,
+          }
+          - {
+            sys: MINGW32,
+            repo: chirizxc/pyo3,
+            ref: 9d5cc3ff90e477877fae0cfad4c05a379608bfcf,
+            env_name: i686,
+            target: i686-pc-windows-gnu,
+            linker: gcc,
+            linker_env: CARGO_TARGET_I686_PC_WINDOWS_GNU_LINKER,
+            compiler: gcc,
+          }
+          - {
+            sys: UCRT64,
+            repo: chirizxc/pyo3,
+            ref: 9d5cc3ff90e477877fae0cfad4c05a379608bfcf,
+            env_name: ucrt-x86_64,
+            target: x86_64-pc-windows-gnu,
+            linker: gcc,
+            linker_env: CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER,
+            compiler: gcc,
+          }
+          - {
+            sys: CLANG64,
+            repo: chirizxc/pyo3,
+            ref: 9d5cc3ff90e477877fae0cfad4c05a379608bfcf,
+            env_name: clang-x86_64,
+            target: x86_64-pc-windows-gnullvm,
+            linker: clang,
+            linker_env: CARGO_TARGET_X86_64_PC_WINDOWS_GNULLVM_LINKER,
+            compiler: clang,
+          }
+
+    env:
+      CARGO_TERM_COLOR: always
+      PYO3_PYTHON: python
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.repo }}
+          ref: ${{ matrix.ref }}
+          path: pyo3
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.sys }}
+          update: true
+          path-type: inherit
+          install: >-
+            mingw-w64-${{ matrix.env_name }}-${{ matrix.compiler }}
+            mingw-w64-${{ matrix.env_name }}-python
+
+      - name: Prepare env
+        run: |
+          echo "${{ matrix.linker_env }}=${{ matrix.linker }}" >> "$GITHUB_ENV"
+          echo "CC=${{ matrix.linker }}" >> "$GITHUB_ENV"
+          echo "PYO3_INCLUDE_DIR=$(python -c "import sysconfig; print(sysconfig.get_path('include'))")" >> "$GITHUB_ENV"
+
+      - name: Create smoke crate
+        run: |
+          mkdir -p smoke-msys2/src
+
+          cat > smoke-msys2/Cargo.toml <<'EOF'
+          [workspace]
+
+          [package]
+          name = "pyo3-msys2-smoke"
+          version = "0.1.0"
+          edition = "2024"
+
+          [lib]
+          crate-type = ["cdylib"]
+
+          [build-dependencies]
+          cc = "1"
+
+          [dependencies]
+          pyo3-ffi = { path = "../pyo3/pyo3-ffi" }
+          EOF
+
+          cat > smoke-msys2/build.rs <<'EOF'
+          fn main() {
+              println!("cargo:rerun-if-changed=build.rs");
+              println!("cargo:rerun-if-changed=py.c");
+
+              let include_dir = std::env::var("PYO3_INCLUDE_DIR")
+                  .expect("PYO3_INCLUDE_DIR is not set");
+
+              cc::Build::new()
+                  .file("py.c")
+                  .include(include_dir)
+                  .compile("pyo3-msys2");
+          }
+          EOF
+
+          cat > smoke-msys2/py.c <<'EOF'
+          #include <Python.h>
+
+          int py_is_initialized(void) {
+              return Py_IsInitialized();
+          }
+          EOF
+
+          cat > smoke-msys2/src/lib.rs <<'EOF'
+          use std::ffi::c_int;
+
+          unsafe extern "C" {
+              fn py_is_initialized() -> c_int;
+          }
+
+          #[unsafe(no_mangle)]
+          pub extern "C" fn link_test() -> c_int {
+              unsafe {
+                  pyo3_ffi::Py_IsInitialized();
+                  py_is_initialized();
+              }
+              0
+          }
+          EOF
+
+      - name: Build smoke crate
+        run: |
+          python -c "import sys; print(sys.executable)"
+          python -c "import sys; print(sys.version)"
+          cargo build --manifest-path smoke-msys2/Cargo.toml --target ${{ matrix.target }} -vv
+
+  baseline:
+    name: baseline / ${{ matrix.sys }}
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {
+            sys: MINGW64,
+            repo: chirizxc/pyo3,
+            ref: fix-mingw-libname,
+            env_name: x86_64,
+            target: x86_64-pc-windows-gnu,
+            linker: gcc,
+            linker_env: CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER,
+            compiler: gcc,
+          }
+          - {
+            sys: MINGW32,
+            repo: chirizxc/pyo3,
+            ref: fix-mingw-libname,
+            env_name: i686,
+            target: i686-pc-windows-gnu,
+            linker: gcc,
+            linker_env: CARGO_TARGET_I686_PC_WINDOWS_GNU_LINKER,
+            compiler: gcc,
+          }
+          - {
+            sys: UCRT64,
+            repo: chirizxc/pyo3,
+            ref: fix-mingw-libname,
+            env_name: ucrt-x86_64,
+            target: x86_64-pc-windows-gnu,
+            linker: gcc,
+            linker_env: CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER,
+            compiler: gcc,
+          }
+          - {
+            sys: CLANG64,
+            repo: chirizxc/pyo3,
+            ref: fix-mingw-libname,
+            env_name: clang-x86_64,
+            target: x86_64-pc-windows-gnullvm,
+            linker: clang,
+            linker_env: CARGO_TARGET_X86_64_PC_WINDOWS_GNULLVM_LINKER,
+            compiler: clang,
+          }
+
+    env:
+      CARGO_TERM_COLOR: always
+      PYO3_PYTHON: python
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.repo }}
+          ref: ${{ matrix.ref }}
+          path: pyo3
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.sys }}
+          update: true
+          path-type: inherit
+          install: >-
+            mingw-w64-${{ matrix.env_name }}-${{ matrix.compiler }}
+            mingw-w64-${{ matrix.env_name }}-python
+
+      - name: Prepare env
+        run: |
+          echo "${{ matrix.linker_env }}=${{ matrix.linker }}" >> "$GITHUB_ENV"
+          echo "CC=${{ matrix.linker }}" >> "$GITHUB_ENV"
+          echo "PYO3_INCLUDE_DIR=$(python -c "import sysconfig; print(sysconfig.get_path('include'))")" >> "$GITHUB_ENV"
+
+      - name: Create smoke crate
+        run: |
+          mkdir -p smoke-msys2/src
+
+          cat > smoke-msys2/Cargo.toml <<'EOF'
+          [workspace]
+
+          [package]
+          name = "pyo3-msys2-smoke"
+          version = "0.1.0"
+          edition = "2024"
+
+          [lib]
+          crate-type = ["cdylib"]
+
+          [build-dependencies]
+          cc = "1"
+
+          [dependencies]
+          pyo3-ffi = { path = "../pyo3/pyo3-ffi" }
+          EOF
+
+          cat > smoke-msys2/build.rs <<'EOF'
+          fn main() {
+              println!("cargo:rerun-if-changed=build.rs");
+              println!("cargo:rerun-if-changed=py.c");
+
+              let include_dir = std::env::var("PYO3_INCLUDE_DIR")
+                  .expect("PYO3_INCLUDE_DIR is not set");
+
+              cc::Build::new()
+                  .file("py.c")
+                  .include(include_dir)
+                  .compile("pyo3-msys2");
+          }
+          EOF
+
+          cat > smoke-msys2/py.c <<'EOF'
+          #include <Python.h>
+
+          int py_is_initialized(void) {
+              return Py_IsInitialized();
+          }
+          EOF
+
+          cat > smoke-msys2/src/lib.rs <<'EOF'
+          use std::ffi::c_int;
+
+          unsafe extern "C" {
+              fn py_is_initialized() -> c_int;
+          }
+
+          #[unsafe(no_mangle)]
+          pub extern "C" fn link_test() -> c_int {
+              unsafe {
+                  pyo3_ffi::Py_IsInitialized();
+                  py_is_initialized();
+              }
+              0
+          }
+          EOF
+
+      - name: Build smoke crate
+        run: |
+          python -c "import sys; print(sys.executable)"
+          python -c "import sys; print(sys.version)"
+          cargo build --manifest-path smoke-msys2/Cargo.toml --target ${{ matrix.target }} -vvname: pyo3-msys2-matrix
+
+on:
   workflow_dispatch:
 
 jobs:
