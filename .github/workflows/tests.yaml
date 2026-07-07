@@ -29,6 +29,8 @@ jobs:
 
       - shell: bash
         run: |
+          ls
+
           uv venv .venv --python 3.13
 
           if [[ "${{ matrix.runner }}" == "windows-*" ]]; then
@@ -40,4 +42,4 @@ jobs:
           
           uv pip install toml-rs playwright
 
-          python issues_229.py
+          python issue_229.py
