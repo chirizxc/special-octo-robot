@@ -24,7 +24,7 @@ jobs:
           cat > issues_229.py <<'PY'
           import asyncio
           from playwright.async_api import async_playwright
-          import toml_rs  # Importing this library breaks the subsequent fork
+          # import toml_rs
 
           async def main() -> None:
               playwright = await async_playwright().start()
