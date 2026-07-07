@@ -6,7 +6,7 @@ on:
 
 jobs:
   from_pypi:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
