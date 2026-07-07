@@ -1,48 +1,14 @@
-name: "Some tests"
-
-on:
-  push:
-  workflow_dispatch:
-
-jobs:
-  with_mimalloc:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-latest
-          - ubuntu-26.04-arm
-          - macos-latest
-          - macos-26-intel
-          - windows-latest
-          - windows-11-vs2026-arm
-
-    steps:
-      - name: "Install uv"
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
-        with:
-          enable-cache: false
-
-      - uses: dtolnay/rust-toolchain@stable # zizmor: ignore[unpinned-uses]
-
       - name: "Run toml_rs playwright test"
         shell: bash
         run: |
           uv venv .venv --python 3.13
-
-          if [[ "${{ matrix.os }}" == windows-* ]]; then
-            echo ".venv/Scripts" >> "$GITHUB_PATH"
-          else
-            echo ".venv/bin" >> "$GITHUB_PATH"
-          fi
 
           uv pip install maturin playwright
 
           git clone --branch vbbb https://github.com/lava-sh/toml-rs.git toml_rs_repo
           cd toml_rs_repo
 
-          maturin build --out wheel --features mimalloc
+          uv run maturin build --out wheel --features mimalloc
 
           uv pip install wheel/*.whl
 
@@ -61,4 +27,4 @@ jobs:
               asyncio.run(main())
           PY
 
-          python issues_229.py
+          uv run python issues_229.py
