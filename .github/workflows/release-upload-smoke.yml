@@ -32,9 +32,9 @@ jobs:
           uv venv .venv --python 3.13
 
           if [[ "${{ matrix.os }}" == windows-* ]]; then
-            PYTHON=".venv/Scripts/python.exe"
+            PYTHON="$PWD/.venv/Scripts/python.exe"
           else
-            PYTHON=".venv/bin/python"
+            PYTHON="$PWD/.venv/bin/python"
           fi
 
           uv pip install --python "$PYTHON" maturin playwright
@@ -44,7 +44,7 @@ jobs:
 
           "$PYTHON" -m maturin build --out wheel --features mimalloc
 
-          uv pip install --python "../$PYTHON" wheel/*.whl
+          uv pip install --python "$PYTHON" wheel/*.whl
 
           cd ..
 
