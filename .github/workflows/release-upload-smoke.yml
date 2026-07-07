@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  toml_rs_issues_229:
+  with_mimalloc:
     runs-on: macos-latest
 
     steps:
@@ -36,7 +36,7 @@ jobs:
 
           python issues_229.py
 
-  toml_rs_issues_229_v2:
+  without_mimalloc:
     runs-on: macos-latest
 
     steps:
@@ -67,6 +67,57 @@ jobs:
           import asyncio
           from playwright.async_api import async_playwright
           # import toml_rs
+
+          async def main() -> None:
+              playwright = await async_playwright().start()
+              await playwright.stop()
+
+          if __name__ == "__main__":
+              asyncio.run(main())
+          PY
+
+          python issues_229.py
+
+  with_mimalloc_without_override:
+    runs-on: macos-latest
+
+    steps:
+      - name: "Install uv"
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+        with:
+          enable-cache: false
+
+      - uses: dtolnay/rust-toolchain@stable # zizmor: ignore[unpinned-uses]
+
+      - name: "Run toml_rs playwright test"
+        run: |
+          uv venv .venv --python 3.13
+          source .venv/bin/activate
+
+          uv pip install maturin playwright
+
+          git clone https://github.com/lava-sh/toml-rs.git toml_rs_repo
+          cd toml_rs_repo
+
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("Cargo.toml")
+          text = path.read_text()
+          text = text.replace('    "override",\n', '')
+          path.write_text(text)
+          PY
+
+          maturin build --out wheel --features mimalloc
+
+          uv pip install wheel/*.whl
+
+          cd ..
+
+          cat > issues_229.py <<'PY'
+          import asyncio
+          from playwright.async_api import async_playwright
+          import toml_rs
 
           async def main() -> None:
               playwright = await async_playwright().start()
