@@ -31,14 +31,20 @@ jobs:
         run: |
           uv venv .venv --python 3.13
 
-          uv pip install maturin playwright
+          if [[ "${{ matrix.os }}" == windows-* ]]; then
+            PYTHON=".venv/Scripts/python.exe"
+          else
+            PYTHON=".venv/bin/python"
+          fi
+
+          uv pip install --python "$PYTHON" maturin playwright
 
           git clone --branch vbbb https://github.com/lava-sh/toml-rs.git toml_rs_repo
           cd toml_rs_repo
 
-          uv run maturin build --out wheel --features mimalloc
+          "$PYTHON" -m maturin build --out wheel --features mimalloc
 
-          uv pip install wheel/*.whl
+          uv pip install --python "../$PYTHON" wheel/*.whl
 
           cd ..
 
@@ -55,4 +61,4 @@ jobs:
               asyncio.run(main())
           PY
 
-          uv run python issues_229.py
+          "$PYTHON" issues_229.py
