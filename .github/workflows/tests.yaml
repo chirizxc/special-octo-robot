@@ -1,0 +1,43 @@
+name: "Some tests"
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  from_pypi:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [
+          "ubuntu-latest",
+          "ubuntu-26.04-arm",
+          "macos-latest",
+          "macos-26-intel",
+          "windows-latest",
+          "windows-11-vs2026-arm",
+        ]
+
+    steps:
+      - name: "Install uv"
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+        with:
+          enable-cache: false
+
+      - uses: dtolnay/rust-toolchain@stable # zizmor: ignore[unpinned-uses]
+
+      - shell: bash
+        run: |
+          uv venv .venv --python 3.13
+
+          if [[ "${{ matrix.runner }}" == "windows-*" ]]; then
+            export UV_LINK_MODE=copy
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
+          
+          uv pip install toml-rs playwright
+
+          python issues_229.py
